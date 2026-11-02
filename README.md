@@ -7,6 +7,8 @@ Première version fonctionnelle d’une plateforme destinée à l’enregistreme
 ## Fonctions disponibles
 
 - connexion par matricule avec session HTTP-only signée ;
+- modification sécurisée de son profil administrateur, de son matricule et de son mot de passe ;
+- modification des profils, rôles, droits et mots de passe des comptes autorisés selon la hiérarchie administrative ;
 - protection des pages internes ;
 - tableau de bord opérationnel responsive ;
 - vérification rapide IMEI/plaque avec normalisation ;
@@ -83,6 +85,8 @@ tests/               Tests automatisés
 ## Compte administrateur
 
 Le compte `SUPER_ADMIN` existant est le seul compte fourni dans les données locales. Avant tout usage réel, remplacer ce stockage JSON par un système persistant et mettre en place une procédure sécurisée de gestion du mot de passe administrateur.
+
+Un administrateur peut modifier son propre nom, matricule, service et mot de passe après vérification du mot de passe actuel. Le `SUPER_ADMIN` peut gérer les profils des autres comptes ; les administrateurs secondaires ne peuvent gérer que les comptes non administrateurs. Le rôle `SUPER_ADMIN` et son compte restent protégés.
 
 ## Déploiement et sécurité
 

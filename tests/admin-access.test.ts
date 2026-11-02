@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canCreateRole, canManageAccount } from "../lib/admin-access";
+import { canCreateRole, canManageAccount, canUpdateAccountProfile } from "../lib/admin-access";
 
 const principal = { matricule: "PRM-8651", role: "SUPER_ADMIN" };
 const secondary = { matricule: "ADM-100", role: "ADMIN" };
@@ -26,4 +26,12 @@ test("un administrateur secondaire ne peut agir ni sur le principal ni sur un au
 test("aucun administrateur ne peut suspendre, supprimer ou réinitialiser son propre compte", () => {
   assert.equal(canManageAccount(principal, principal), false);
   assert.equal(canManageAccount(secondary, secondary), false);
+});
+
+test("les administrateurs peuvent modifier leur profil sans modifier leur rôle", () => {
+  assert.equal(canUpdateAccountProfile(principal, secondary, "ADMIN"), true);
+  assert.equal(canUpdateAccountProfile(secondary, agent, "COMMISSARIAT_SUPERVISOR"), true);
+  assert.equal(canUpdateAccountProfile(secondary, agent, "ADMIN"), false);
+  assert.equal(canUpdateAccountProfile(principal, principal, "SUPER_ADMIN"), false);
+  assert.equal(canUpdateAccountProfile(principal, { matricule: "ROOT-2", role: "SUPER_ADMIN" }, "ADMIN"), false);
 });

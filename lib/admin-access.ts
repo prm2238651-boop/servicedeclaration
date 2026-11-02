@@ -19,3 +19,7 @@ export function canManageAccount(actor: AdminActor, target: ManagedAccount) {
   if (target.role === "ADMIN") return actor.role === "SUPER_ADMIN";
   return true;
 }
+
+export function canUpdateAccountProfile(actor: AdminActor, target: ManagedAccount, role: string) {
+  return canManageAccount(actor, target) && canCreateRole(actor, role);
+}

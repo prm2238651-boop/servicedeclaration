@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Ban, CheckCircle2, Copy, KeyRound, RotateCcw, Search, Trash2, UserPlus, X } from "lucide-react";
+import { Ban, CheckCircle2, Copy, KeyRound, Pencil, RotateCcw, Search, Trash2, UserPlus, X } from "lucide-react";
 import { DEFAULT_PERMISSIONS, type Permission } from "@/lib/permissions";
 import { CreatableSelect } from "@/components/creatable-select";
 
@@ -88,6 +88,11 @@ export function AdminUsers({ currentRole, currentMatricule }: { currentRole: str
   const [notice, setNotice] = useState("");
   const [credentials, setCredentials] = useState<{ name: string; matricule: string; password: string } | null>(null);
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [profileRole, setProfileRole] = useState("");
+  const [profileRights, setProfileRights] = useState<Permission[]>([]);
+  const [profileError, setProfileError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
   const [passwordError, setPasswordError] = useState("");
 
@@ -128,6 +133,91 @@ export function AdminUsers({ currentRole, currentMatricule }: { currentRole: str
     if (user.matricule === currentMatricule || user.roleCode === "SUPER_ADMIN") return false;
     if (user.roleCode === "ADMIN") return currentRole === "SUPER_ADMIN";
     return true;
+  }
+
+  function openProfile(user: User) {
+    setProfileUser(user);
+    setProfileRole(user.roleCode);
+    setProfileRights((user.permissions ?? DEFAULT_PERMISSIONS[user.roleCode] ?? []) as Permission[]);
+    setProfileError("");
+  }
+
+  function profileRoleChanged(role: string) {
+    setProfileRole(role);
+    setProfileRights(DEFAULT_PERMISSIONS[role] ?? []);
+  }
+
+  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileUser) return;
+    setProfileError("");
+    setProfileSaving(true);
+    const data = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
+    const isSelf = profileUser.matricule === currentMatricule;
+    if (!isSelf && profileRole === "ADMIN" && currentRole !== "SUPER_ADMIN") {
+      setProfileError("Seul l’administrateur principal peut attribuer le rôle administrateur.");
+      setProfileSaving(false);
+      return;
+    }
+    if (isSelf && data.newPassword && data.newPassword !== data.confirmPassword) {
+      setProfileError("Les deux nouveaux mots de passe ne correspondent pas.");
+      setProfileSaving(false);
+      return;
+    }
+
+    const body = isSelf
+      ? {
+          action: "UPDATE_SELF_PROFILE",
+          matricule: data.matricule,
+          name: data.name,
+          service: data.service,
+          currentPassword: data.currentPassword,
+          ...(data.newPassword ? { newPassword: data.newPassword } : {}),
+        }
+      : {
+          action: "UPDATE_PROFILE",
+          targetMatricule: profileUser.matricule,
+          matricule: data.matricule,
+          name: data.name,
+          service: data.service,
+          role: profileRole,
+          permissions: profileRole === "ADMIN" ? [] : profileRights,
+        };
+
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({})) as { error?: string };
+        setProfileError(response.status === 401
+          ? "Le mot de passe actuel est incorrect."
+          : response.status === 409
+            ? "Ce matricule est déjà attribué à un autre compte."
+            : result.error === "ROLE_FORBIDDEN"
+              ? "Vous n’êtes pas autorisé à attribuer ce rôle."
+              : response.status >= 500
+                ? "Une erreur serveur a empêché la modification du profil."
+                : "La modification du profil a été refusée.");
+        return;
+      }
+
+      if (isSelf) {
+        window.location.reload();
+        return;
+      }
+      const result = await response.json() as { user: StoredUser };
+      const updatedUser = toUser(result.user);
+      persist(users.map(user => user.matricule === profileUser.matricule ? updatedUser : user));
+      setProfileUser(null);
+      setNotice(`Profil de ${updatedUser.name} mis à jour.`);
+    } catch {
+      setProfileError("Impossible de joindre le serveur. Réessayez.");
+    } finally {
+      setProfileSaving(false);
+    }
   }
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
@@ -234,6 +324,7 @@ export function AdminUsers({ currentRole, currentMatricule }: { currentRole: str
             <td><span className="rights-count">{user.roleCode === "SUPER_ADMIN" ? "Tous" : user.roleCode === "ADMIN" ? "Gestion utilisateurs" : `${user.permissions?.length ?? "Profil"} droits`}</span></td>
             <td><span className={`badge ${user.status === "Actif" ? "badge-green" : "badge-red"}`}>{user.status}</span></td>
             <td><div className="inline-actions">
+              {(user.matricule === currentMatricule || canManage(user)) && <button title="Modifier le profil" aria-label={`Modifier le profil de ${user.name}`} onClick={() => openProfile(user)}><Pencil size={16}/></button>}
               <button title={canManage(user) ? "Modifier le mot de passe" : "Compte protégé"} disabled={!canManage(user)} aria-label={`Modifier le mot de passe de ${user.name}`} onClick={() => { setPasswordError(""); setPasswordUser(user); }}><KeyRound size={16}/></button>
               {user.status === "Actif"
                 ? <button title={canManage(user) ? "Suspendre" : "Compte protégé"} disabled={!canManage(user)} onClick={() => accountAction(user, "suspend")}><Ban size={16}/></button>
@@ -266,6 +357,28 @@ export function AdminUsers({ currentRole, currentMatricule }: { currentRole: str
       <div className="field"><label htmlFor="confirmPassword">Confirmer le mot de passe *</label><input className="input" id="confirmPassword" name="confirmPassword" type="password" minLength={10} maxLength={128} autoComplete="new-password" required/></div>
       <div className="permission-note"><strong>Réinitialisation administrateur</strong><span>Le nouveau mot de passe doit contenir au moins 10 caractères. Il sera enregistré sous forme chiffrée.</span></div>
       <div className="dialog-actions"><button type="button" className="btn btn-secondary" onClick={() => setPasswordUser(null)}>Annuler</button><button className="btn btn-primary"><KeyRound size={17}/>Enregistrer le mot de passe</button></div>
+    </form></div>}
+
+    {profileUser && <div className="modal-backdrop"><form className="recovery-dialog profile-dialog" onSubmit={saveProfile}>
+      <div className="dialog-head"><div><span className="eyebrow">{profileUser.matricule === currentMatricule ? "Mon compte" : "Gestion du compte"}</span><h2>{profileUser.matricule === currentMatricule ? "Modifier mon profil" : "Modifier le profil"}</h2></div><button type="button" className="icon-btn" onClick={() => setProfileUser(null)} aria-label="Fermer"><X size={18}/></button></div>
+      {profileError && <div className="error" role="alert">{profileError}</div>}
+      <div className="form-grid">
+        <div className="field"><label htmlFor="profile-name">Nom complet *</label><input className="input" id="profile-name" name="name" defaultValue={profileUser.name} minLength={3} maxLength={100} required/></div>
+        <div className="field"><label htmlFor="profile-matricule">Matricule *</label><input className="input" id="profile-matricule" name="matricule" defaultValue={profileUser.matricule} minLength={3} maxLength={30} pattern="[A-Za-z0-9-]+" required/></div>
+        <div className="field span-2"><label htmlFor="profile-service">Service *</label><input className="input" id="profile-service" name="service" defaultValue={profileUser.service} minLength={3} maxLength={100} required/></div>
+      </div>
+      {profileUser.matricule === currentMatricule ? <>
+        <div className="field"><label htmlFor="current-profile-password">Mot de passe actuel *</label><input className="input" id="current-profile-password" name="currentPassword" type="password" minLength={8} autoComplete="current-password" required/></div>
+        <div className="form-grid">
+          <div className="field"><label htmlFor="profile-new-password">Nouveau mot de passe</label><input className="input" id="profile-new-password" name="newPassword" type="password" minLength={10} maxLength={128} autoComplete="new-password"/></div>
+          <div className="field"><label htmlFor="profile-confirm-password">Confirmer le nouveau mot de passe</label><input className="input" id="profile-confirm-password" name="confirmPassword" type="password" minLength={10} maxLength={128} autoComplete="new-password"/></div>
+        </div>
+        <div className="permission-note"><strong>Vérification de sécurité</strong><span>Votre mot de passe actuel est demandé pour modifier votre profil. Si vous changez votre matricule ou votre mot de passe, votre session sera renouvelée.</span></div>
+      </> : <>
+        <div className="field"><label htmlFor="profile-role">Rôle *</label><select className="input" id="profile-role" value={profileRole} onChange={event => profileRoleChanged(event.target.value)}>{currentRole === "SUPER_ADMIN" && <option value="ADMIN">Administrateur</option>}<option value="COMMISSARIAT_AGENT">Agent de commissariat</option><option value="GSR_AGENT">Agent GSR</option><option value="COMMISSARIAT_SUPERVISOR">Superviseur de commissariat</option></select></div>
+        {profileRole === "ADMIN" ? <div className="permission-note"><strong>Administrateur secondaire</strong><span>Ses droits sont limités par la hiérarchie. Seul l’administrateur principal peut gérer ce compte.</span></div> : <fieldset className="permissions-fieldset"><legend>Droits d’accès</legend><div className="permissions-grid">{rights.map(right => <label className="permission-option" key={right.code}><input type="checkbox" checked={profileRights.includes(right.code)} onChange={event => setProfileRights(event.target.checked ? [...profileRights, right.code] : profileRights.filter(permission => permission !== right.code))}/><span><strong>{right.label}</strong><small>{right.help}</small></span></label>)}</div></fieldset>}
+      </>}
+      <div className="dialog-actions"><button type="button" className="btn btn-secondary" onClick={() => setProfileUser(null)}>Annuler</button><button className="btn btn-primary" disabled={profileSaving}><Pencil size={17}/>{profileSaving ? "Enregistrement…" : "Enregistrer le profil"}</button></div>
     </form></div>}
 
     {deleteUser && <div className="modal-backdrop"><section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title">
