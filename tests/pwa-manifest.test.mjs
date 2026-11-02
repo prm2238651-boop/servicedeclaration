@@ -6,6 +6,7 @@ const publicDirectory = new URL("../public/", import.meta.url);
 const manifest = JSON.parse(
   await readFile(new URL("manifest.webmanifest", publicDirectory), "utf8"),
 );
+const serviceWorker = await readFile(new URL("sw.js", publicDirectory), "utf8");
 
 test("manifest describes an installable French standalone application", () => {
   assert.equal(manifest.lang, "fr");
@@ -27,4 +28,10 @@ test("manifest and Apple icons exist with the declared PNG dimensions", async ()
     assert.equal(png.readUInt32BE(16), size);
     assert.equal(png.readUInt32BE(20), size);
   }
+});
+
+test("service worker supports installation without caching sensitive app data", () => {
+  assert.match(serviceWorker, /addEventListener\("fetch"/);
+  assert.match(serviceWorker, /event\.respondWith\(fetch\(event\.request\)\)/);
+  assert.doesNotMatch(serviceWorker, /caches\.(?:open|match|put)/);
 });

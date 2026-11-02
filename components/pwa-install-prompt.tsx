@@ -28,12 +28,24 @@ function getInstallInstructions() {
     return "Ouvrez le menu ⋮ de votre navigateur, puis choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».";
   }
 
+  if (/Edg\//i.test(userAgent)) {
+    return "Dans Microsoft Edge, ouvrez le menu ⋯, puis « Applications » → « Installer ce site en tant qu’application ».";
+  }
+
+  if (/Chrome\//i.test(userAgent) && !/Electron\//i.test(userAgent)) {
+    return "Dans Google Chrome, ouvrez ⋮, puis « Caster, enregistrer et partager » → « Installer la page comme application ». Si cette option manque, vérifiez que le site est en HTTPS et actualisez-le.";
+  }
+
   if (/Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|Edg/i.test(userAgent)) {
     return "Dans Safari, ouvrez le menu Fichier puis choisissez « Ajouter au Dock ».";
   }
 
   if (/Firefox/i.test(userAgent)) {
     return "L’installation n’est pas proposée dans Firefox sur ordinateur. Ouvrez ce site dans Chrome ou Edge, puis utilisez leur menu pour l’installer.";
+  }
+
+  if (/Electron/i.test(userAgent)) {
+    return "Ce navigateur intégré ne permet pas l’installation. Ouvrez l’adresse du site dans Google Chrome ou Microsoft Edge, puis utilisez le menu du navigateur pour l’installer.";
   }
 
   return "Dans le menu de votre navigateur, choisissez « Installer l’application » ou « Ajouter à l’écran d’accueil ».";
@@ -66,6 +78,13 @@ export function PwaInstallPrompt() {
     });
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleInstalled);
+
+    if ("serviceWorker" in navigator && window.isSecureContext && !isStandalone()) {
+      void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error: unknown) => {
+        console.error("Failed to register the PWA service worker", error);
+        setInstallError("Installation indisponible : vérifiez que le site est accessible en HTTPS, puis actualisez la page.");
+      });
+    }
 
     const displayMode = window.matchMedia("(display-mode: standalone)");
     displayMode.addEventListener("change", updateInstalledState);
