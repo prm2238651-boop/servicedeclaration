@@ -97,6 +97,12 @@ La plateforme ne doit jamais présenter une correspondance comme preuve judiciai
 - `TRUSTED_PROXY_SECRET` : secret partagé avec le reverse proxy autorisé à fournir l'adresse cliente ;
 - `APP_NAME` : nom personnalisable.
 
+### Configuration Netlify
+
+Dans les variables d’environnement du site Netlify, définir `AUTH_SECRET` avec une valeur aléatoire d’au moins 32 caractères, puis relancer le déploiement. Ne pas utiliser la valeur d’exemple de `.env.example` et ne jamais publier ce secret sur GitHub.
+
+La connexion lit le compte depuis `data/demo-users.json`. En local sous Windows, le stockage peut utiliser `%LOCALAPPDATA%\PoliceMali\demo-users.json` à la place ; les changements de mot de passe faits uniquement en local ne sont donc pas automatiquement transférés sur Netlify. Le stockage JSON actuel est prévu pour le développement et n’est pas un stockage persistant de production.
+
 ## Feuille de route prioritaire
 
 1. Brancher les routes métier sur Prisma avec transactions et audit append-only.

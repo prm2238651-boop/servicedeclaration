@@ -11,10 +11,26 @@ export function LoginPageClient() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setLoading(true); setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
-    if (!response.ok) { setError("Matricule ou mot de passe incorrect."); setLoading(false); return; }
-    const result = await response.json();
-    router.push(result.redirectTo || "/dashboard"); router.refresh();
+    try {
+      const response = await fetch("/api/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.fromEntries(form)) });
+      if (!response.ok) {
+        setError(response.status === 401
+          ? "Matricule ou mot de passe incorrect."
+          : response.status === 429
+            ? "Trop de tentatives. Veuillez patienter avant de réessayer."
+            : response.status >= 500
+              ? "Le service de connexion rencontre une erreur. Vérifiez la configuration du déploiement."
+              : "La connexion n’a pas pu aboutir. Vérifiez les informations saisies.");
+        return;
+      }
+      const result = await response.json();
+      router.push(result.redirectTo || "/dashboard");
+      router.refresh();
+    } catch {
+      setError("Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.");
+    } finally {
+      setLoading(false);
+    }
   }
   return <main className="login-shell">
     <section className="login-brand">
