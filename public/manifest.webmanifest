@@ -1,0 +1,10 @@
+{
+  "name": "POLICE NATIONALE — DECLARATION/MALI",
+  "short_name": "DECLARATION/MALI",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#071b32",
+  "lang": "fr",
+  "icons": []
+}
