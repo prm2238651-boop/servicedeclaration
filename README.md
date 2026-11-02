@@ -38,7 +38,7 @@ Le compte `SUPER_ADMIN` existant est conservé dans `data/demo-users.json`. Son 
 
 ## Installation sur un appareil
 
-En ligne, ouvrir le site en HTTPS. Les navigateurs compatibles affichent le bouton **Installer** dans la proposition visible au lancement ; sur iPhone/iPad, ouvrir le site avec Safari puis choisir **Partager → Sur l’écran d’accueil**. Firefox ordinateur ne propose pas l’installation de cette application ; utiliser Chrome ou Edge. L’installation nécessite une connexion et n’active pas le fonctionnement hors ligne.
+En ligne, ouvrir le site en HTTPS. La proposition affiche un bouton **Installer** pendant 30 secondes : il ouvre la confirmation native du navigateur lorsqu’elle est disponible, sinon les étapes d’installation manuelle. Sur iPhone/iPad, ouvrir le site avec Safari puis choisir **Partager → Sur l’écran d’accueil**. Firefox ordinateur ne propose pas l’installation de cette application ; utiliser Chrome ou Edge. L’installation nécessite une connexion et n’active pas le fonctionnement hors ligne.
 
 ## PostgreSQL et Prisma
 

@@ -223,10 +223,12 @@ textarea.input { min-height:100px; resize:vertical; }
 .table-subtitle { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
 .pwa-install { position:fixed; z-index:20; right:20px; bottom:20px; display:flex; align-items:center; gap:14px; width:min(580px,calc(100vw - 32px)); padding:16px 52px 16px 16px; border:1px solid #d5e0e9; border-radius:14px; background:#fff; box-shadow:0 12px 38px rgba(7,27,50,.2); }
 .pwa-install-icon { flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center; border-radius:12px; color:#fff; background:var(--blue); }
-.pwa-install-copy { min-width:0; flex:1; }
+.pwa-install-content { min-width:0; flex:1; }
+.pwa-install-copy { min-width:0; }
 .pwa-install-copy strong { display:block; font-size:14px; }
 .pwa-install-copy p { margin:5px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
-.pwa-install-copy .pwa-install-error { color:var(--danger); }
+.pwa-install-instructions, .pwa-install-error { margin:8px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
+.pwa-install-error { color:var(--danger); }
 .pwa-install-action { flex:0 0 auto; }
 .pwa-install-close { position:absolute; top:10px; right:10px; display:grid; width:34px; height:34px; place-items:center; border:0; border-radius:8px; color:var(--muted); background:transparent; cursor:pointer; }
 .pwa-install-close:hover { color:var(--ink); background:var(--paper); }

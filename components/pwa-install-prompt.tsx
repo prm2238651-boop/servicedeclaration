@@ -42,11 +42,13 @@ function getInstallInstructions() {
 export function PwaInstallPrompt() {
   const [visible, setVisible] = useState(true);
   const [instructions, setInstructions] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installError, setInstallError] = useState("");
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    const hideTimer = window.setTimeout(() => setVisible(false), 30_000);
     const updateInstalledState = () => setIsInstalled(isStandalone());
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -55,6 +57,7 @@ export function PwaInstallPrompt() {
     const handleInstalled = () => {
       setInstallPrompt(null);
       setIsInstalled(true);
+      setVisible(false);
     };
 
     const initialize = window.requestAnimationFrame(() => {
@@ -68,6 +71,7 @@ export function PwaInstallPrompt() {
     displayMode.addEventListener("change", updateInstalledState);
 
     return () => {
+      window.clearTimeout(hideTimer);
       window.cancelAnimationFrame(initialize);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleInstalled);
@@ -76,7 +80,10 @@ export function PwaInstallPrompt() {
   }, []);
 
   async function installApplication() {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setShowInstructions((current) => !current);
+      return;
+    }
 
     try {
       await installPrompt.prompt();
@@ -95,17 +102,28 @@ export function PwaInstallPrompt() {
   return (
     <aside className="pwa-install" aria-label="Installer l’application">
       <div className="pwa-install-icon" aria-hidden="true"><Smartphone size={22} /></div>
-      <div className="pwa-install-copy">
-        <strong>Installer DECLARATION/MALI</strong>
-        <p>{instructions}</p>
+      <div className="pwa-install-content">
+        <div className="pwa-install-copy">
+          <strong>Installer DECLARATION/MALI</strong>
+          <p>Utilisez l’application directement depuis votre appareil.</p>
+        </div>
+        {showInstructions && (
+          <p className="pwa-install-instructions" id="pwa-install-instructions" role="status">
+            {instructions}
+          </p>
+        )}
         {installError && <p className="pwa-install-error" role="alert">{installError}</p>}
       </div>
-      {installPrompt && (
-        <button className="btn btn-primary pwa-install-action" type="button" onClick={installApplication}>
-          <Download size={17} />
-          Installer
-        </button>
-      )}
+      <button
+        className="btn btn-primary pwa-install-action"
+        type="button"
+        aria-expanded={showInstructions}
+        aria-controls={showInstructions ? "pwa-install-instructions" : undefined}
+        onClick={installApplication}
+      >
+        <Download size={17} />
+        {showInstructions && !installPrompt ? "Fermer" : "Installer"}
+      </button>
       <button
         className="pwa-install-close"
         type="button"
