@@ -8,6 +8,15 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+declare global {
+  interface Window {
+    __policePwaInstall?: {
+      prompt: InstallPromptEvent | null;
+      installed: boolean;
+    };
+  }
+}
+
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -61,12 +70,12 @@ export function PwaInstallPrompt() {
 
   useEffect(() => {
     const hideTimer = window.setTimeout(() => setVisible(false), 30_000);
-    const updateInstalledState = () => setIsInstalled(isStandalone());
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
+    const updateInstalledState = () => {
+      setIsInstalled(isStandalone() || window.__policePwaInstall?.installed === true);
     };
+    const updateInstallPrompt = () => setInstallPrompt(window.__policePwaInstall?.prompt ?? null);
     const handleInstalled = () => {
+      updateInstallPrompt();
       setInstallPrompt(null);
       setIsInstalled(true);
       setVisible(false);
@@ -75,9 +84,10 @@ export function PwaInstallPrompt() {
     const initialize = window.requestAnimationFrame(() => {
       setInstructions(getInstallInstructions());
       updateInstalledState();
+      updateInstallPrompt();
     });
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleInstalled);
+    window.addEventListener("police:pwa-install-ready", updateInstallPrompt);
+    window.addEventListener("police:pwa-installed", handleInstalled);
 
     if ("serviceWorker" in navigator && window.isSecureContext && !isStandalone()) {
       void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error: unknown) => {
@@ -92,8 +102,8 @@ export function PwaInstallPrompt() {
     return () => {
       window.clearTimeout(hideTimer);
       window.cancelAnimationFrame(initialize);
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleInstalled);
+      window.removeEventListener("police:pwa-install-ready", updateInstallPrompt);
+      window.removeEventListener("police:pwa-installed", handleInstalled);
       displayMode.removeEventListener("change", updateInstalledState);
     };
   }, []);
@@ -107,11 +117,17 @@ export function PwaInstallPrompt() {
     try {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
+      if (window.__policePwaInstall) window.__policePwaInstall.prompt = null;
       setInstallPrompt(null);
-      if (choice.outcome === "accepted") setVisible(false);
+      if (choice.outcome === "accepted") {
+        setVisible(false);
+      } else {
+        setShowInstructions(true);
+      }
     } catch (error) {
       console.error("Failed to open the browser installation prompt", error);
       setInstallError("Impossible d’ouvrir l’installation. Utilisez le menu de votre navigateur.");
+      if (window.__policePwaInstall) window.__policePwaInstall.prompt = null;
       setInstallPrompt(null);
     }
   }
@@ -141,7 +157,7 @@ export function PwaInstallPrompt() {
         onClick={installApplication}
       >
         <Download size={17} />
-        {showInstructions && !installPrompt ? "Fermer" : "Installer"}
+        {installPrompt ? "Installer" : showInstructions ? "Fermer" : "Voir les étapes"}
       </button>
       <button
         className="pwa-install-close"

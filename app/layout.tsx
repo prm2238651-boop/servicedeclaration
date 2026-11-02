@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import "./globals.css";
 
@@ -16,5 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="fr"><body>{children}<PwaInstallPrompt /></body></html>;
+  return <html lang="fr"><body>{children}<PwaInstallPrompt /><Script src="/pwa-install.js" strategy="beforeInteractive" /></body></html>;
 }
