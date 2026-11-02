@@ -15,6 +15,7 @@ Première version fonctionnelle d’une plateforme destinée à l’enregistreme
 - schéma Prisma complet : utilisateurs, rôles, services, objets, identifiants, récupération, restitution, audit, recherches et notifications ;
 - compte administrateur principal conservé sans comptes ni dossiers d’exemple ;
 - manifeste PWA de base et interface mobile ;
+- proposition d’installation dans les navigateurs compatibles, avec instructions iPhone/iPad ;
 - test automatisé de normalisation.
 
 ## Prérequis
@@ -34,6 +35,10 @@ npm run dev
 Ouvrir `http://localhost:3000`.
 
 Le compte `SUPER_ADMIN` existant est conservé dans `data/demo-users.json`. Son mot de passe n’est pas stocké en clair dans le dépôt.
+
+## Installation sur un appareil
+
+En ligne, ouvrir le site en HTTPS. Les navigateurs compatibles affichent le bouton **Installer** dans la proposition visible au lancement ; sur iPhone/iPad, ouvrir le site avec Safari puis choisir **Partager → Sur l’écran d’accueil**. Firefox ordinateur ne propose pas l’installation de cette application ; utiliser Chrome ou Edge. L’installation nécessite une connexion et n’active pas le fonctionnement hors ligne.
 
 ## PostgreSQL et Prisma
 
