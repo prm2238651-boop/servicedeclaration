@@ -1,283 +1,401 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum UserStatus { ACTIVE SUSPENDED DISABLED }
-enum ObjectStatus { STOLEN FOUND UNDER_VERIFICATION WAITING_RETURN RETURNED CLOSED CANCELLED }
-enum IdentifierType { IMEI IMEI2 SERIAL_NUMBER VIN ENGINE_NUMBER LICENSE_PLATE MAC_ADDRESS OTHER }
-enum DocumentType { COMPLAINT POLICE_REPORT INVOICE OBJECT_PHOTO PROOF_OF_PURCHASE RETURN_DOCUMENT OTHER }
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum ObjectStatus {
+  STOLEN
+  FOUND
+  UNDER_VERIFICATION
+  WAITING_RETURN
+  RETURNED
+  CLOSED
+  CANCELLED
+}
+
+enum IdentifierType {
+  IMEI
+  IMEI2
+  SERIAL_NUMBER
+  VIN
+  ENGINE_NUMBER
+  LICENSE_PLATE
+  MAC_ADDRESS
+  OTHER
+}
+
+enum DocumentType {
+  COMPLAINT
+  POLICE_REPORT
+  INVOICE
+  OBJECT_PHOTO
+  PROOF_OF_PURCHASE
+  RETURN_DOCUMENT
+  OTHER
+}
 
 model Role {
-  id String @id @default(cuid())
-  code String @unique
-  name String
-  users User[]
+  id          String           @id @default(cuid())
+  code        String           @unique
+  name        String
+  users       User[]
   permissions RolePermission[]
 }
 
 model Permission {
-  id String @id @default(cuid())
-  code String @unique
+  id          String           @id @default(cuid())
+  code        String           @unique
   description String
-  roles RolePermission[]
+  roles       RolePermission[]
 }
 
 model RolePermission {
-  roleId String
+  roleId       String
   permissionId String
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
   @@id([roleId, permissionId])
 }
 
 model Region {
-  id String @id @default(cuid())
-  name String @unique
+  id       String        @id @default(cuid())
+  name     String        @unique
   services Service[]
-  reports TheftReport[]
+  reports  TheftReport[]
 }
 
 model Service {
-  id String @id @default(cuid())
-  code String @unique
-  name String
-  type String
-  parentId String?
-  parent Service? @relation("ServiceHierarchy", fields: [parentId], references: [id])
-  children Service[] @relation("ServiceHierarchy")
-  regionId String?
-  region Region? @relation(fields: [regionId], references: [id])
-  users User[]
-  reports TheftReport[]
+  id         String        @id @default(cuid())
+  code       String        @unique
+  name       String
+  type       String
+  parentId   String?
+  parent     Service?      @relation("ServiceHierarchy", fields: [parentId], references: [id])
+  children   Service[]     @relation("ServiceHierarchy")
+  regionId   String?
+  region     Region?       @relation(fields: [regionId], references: [id])
+  users      User[]
+  reports    TheftReport[]
   recoveries Recovery[]
 }
 
 model User {
-  id String @id @default(cuid())
-  matricule String @unique
-  firstName String
-  lastName String
-  function String?
-  passwordHash String
-  status UserStatus @default(ACTIVE)
-  roleId String
-  role Role @relation(fields: [roleId], references: [id])
-  serviceId String
-  service Service @relation(fields: [serviceId], references: [id])
-  lastLoginAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  reportsCreated TheftReport[] @relation("ReportCreator")
-  recoveries Recovery[]
-  returns Return[]
-  searches SearchLog[]
-  audits AuditLog[]
-  sessions LoginSession[]
-  notifications Notification[]
+  id             String         @id @default(cuid())
+  matricule      String         @unique
+  firstName      String
+  lastName       String
+  function       String?
+  passwordHash   String
+  status         UserStatus     @default(ACTIVE)
+  roleId         String
+  role           Role           @relation(fields: [roleId], references: [id])
+  serviceId      String
+  service        Service        @relation(fields: [serviceId], references: [id])
+  lastLoginAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  reportsCreated TheftReport[]  @relation("ReportCreator")
+  recoveries     Recovery[]
+  returns        Return[]
+  searches       SearchLog[]
+  audits         AuditLog[]
+  sessions       LoginSession[]
+  notifications  Notification[]
+}
+
+model AuthAccount {
+  userId                     String             @id @map("user_id")
+  matricule                  String             @unique
+  name                       String
+  role                       String
+  service                    String
+  permissions                Json
+  passwordHash               String             @map("password_hash")
+  status                     String             @default("ACTIVE")
+  totpSecretEncrypted        String?            @map("totp_secret_encrypted")
+  totpPendingSecretEncrypted String?            @map("totp_pending_secret_encrypted")
+  totpEnabled                Boolean            @default(false) @map("totp_enabled")
+  totpLastUsedStep           Int?               @map("totp_last_used_step")
+  totpLastVerifiedAt         DateTime?          @map("totp_last_verified_at")
+  lastLoginAt                DateTime?          @map("last_login_at")
+  recoveryCodes              AuthRecoveryCode[]
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
+
+  @@map("auth_accounts")
+}
+
+model AuthRecoveryCode {
+  codeHash      String      @id @map("code_hash")
+  accountUserId String      @map("account_user_id")
+  account       AuthAccount @relation(fields: [accountUserId], references: [userId], onDelete: Cascade)
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  @@index([accountUserId])
+  @@map("auth_recovery_codes")
+}
+
+model ReportRecord {
+  id                      String   @id @default(cuid())
+  dossier                 String   @unique
+  dossierLookupHash       String
+  pv                      String
+  pvLookupHash            String
+  status                  String
+  date                    String
+  region                  String
+  quartier                String
+  nomEncrypted            String
+  prenomEncrypted         String
+  telephoneEncrypted      String
+  pieceEncrypted          String?
+  categorie               String
+  marque                  String
+  modele                  String
+  couleur                 String
+  identifiantType         String
+  identifiantEncrypted    String
+  identifiantLookupHash   String   @unique
+  service                 String
+  createdBy               String
+  createdAt               DateTime @default(now())
+  recoveredAt             String?
+  recoveredBy             String?
+  recoveredByService      String?
+  recoveryNoteEncrypted   String?
+  returnedAt              String?
+  returnIdentityEncrypted String?
+  returnNoteEncrypted     String?
+  returnedByAgent         String?
+  circonstancesEncrypted  String?
+  updatedAt               DateTime @updatedAt
+
+  @@index([dossierLookupHash])
+  @@index([pvLookupHash])
+  @@index([status, service])
+  @@index([createdBy])
+  @@map("report_records")
 }
 
 model Owner {
-  id String @id @default(cuid())
-  firstNameEncrypted String
-  lastNameEncrypted String
-  phoneEncrypted String
-  secondPhoneEncrypted String?
-  emailEncrypted String?
-  identityType String?
+  id                      String        @id @default(cuid())
+  firstNameEncrypted      String
+  lastNameEncrypted       String
+  phoneEncrypted          String
+  secondPhoneEncrypted    String?
+  emailEncrypted          String?
+  identityType            String?
   identityNumberEncrypted String?
-  reports TheftReport[]
-  createdAt DateTime @default(now())
+  reports                 TheftReport[]
+  createdAt               DateTime      @default(now())
 }
 
 model Category {
-  id String @id @default(cuid())
-  name String @unique
-  active Boolean @default(true)
+  id            String           @id @default(cuid())
+  name          String           @unique
+  active        Boolean          @default(true)
   subcategories Subcategory[]
-  objects ReportedObject[]
+  objects       ReportedObject[]
 }
 
 model Subcategory {
-  id String @id @default(cuid())
-  name String
+  id         String           @id @default(cuid())
+  name       String
   categoryId String
-  category Category @relation(fields: [categoryId], references: [id])
-  objects ReportedObject[]
+  category   Category         @relation(fields: [categoryId], references: [id])
+  objects    ReportedObject[]
+
   @@unique([categoryId, name])
 }
 
 model TheftReport {
-  id String @id @default(cuid())
-  reportNumber String @unique
+  id              String           @id @default(cuid())
+  reportNumber    String           @unique
   complaintNumber String?
-  theftDate DateTime
+  theftDate       DateTime
   approximateTime String?
-  location String
-  commune String?
-  district String?
-  circumstances String?
-  status ObjectStatus @default(STOLEN)
-  ownerId String
-  owner Owner @relation(fields: [ownerId], references: [id])
-  regionId String
-  region Region @relation(fields: [regionId], references: [id])
-  serviceId String
-  service Service @relation(fields: [serviceId], references: [id])
-  createdById String
-  createdBy User @relation("ReportCreator", fields: [createdById], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  objects ReportedObject[]
-  documents Document[]
-  recoveries Recovery[]
-  returns Return[]
-  searches SearchLog[]
-  auditLogs AuditLog[]
-  notifications Notification[]
+  location        String
+  commune         String?
+  district        String?
+  circumstances   String?
+  status          ObjectStatus     @default(STOLEN)
+  ownerId         String
+  owner           Owner            @relation(fields: [ownerId], references: [id])
+  regionId        String
+  region          Region           @relation(fields: [regionId], references: [id])
+  serviceId       String
+  service         Service          @relation(fields: [serviceId], references: [id])
+  createdById     String
+  createdBy       User             @relation("ReportCreator", fields: [createdById], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  objects         ReportedObject[]
+  documents       Document[]
+  recoveries      Recovery[]
+  returns         Return[]
+  searches        SearchLog[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
 }
 
 model ReportedObject {
-  id String @id @default(cuid())
-  reportId String
-  report TheftReport @relation(fields: [reportId], references: [id])
-  categoryId String
-  category Category @relation(fields: [categoryId], references: [id])
-  subcategoryId String?
-  subcategory Subcategory? @relation(fields: [subcategoryId], references: [id])
-  brand String?
-  model String?
-  color String?
-  year Int?
-  description String?
+  id               String             @id @default(cuid())
+  reportId         String
+  report           TheftReport        @relation(fields: [reportId], references: [id])
+  categoryId       String
+  category         Category           @relation(fields: [categoryId], references: [id])
+  subcategoryId    String?
+  subcategory      Subcategory?       @relation(fields: [subcategoryId], references: [id])
+  brand            String?
+  model            String?
+  color            String?
+  year             Int?
+  description      String?
   distinctiveMarks String?
-  identifiers ObjectIdentifier[]
-  photos ObjectPhoto[]
-  createdAt DateTime @default(now())
+  identifiers      ObjectIdentifier[]
+  photos           ObjectPhoto[]
+  createdAt        DateTime           @default(now())
 }
 
 model ObjectIdentifier {
-  id String @id @default(cuid())
-  objectId String
-  object ReportedObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
-  identifierType IdentifierType
+  id                       String         @id @default(cuid())
+  objectId                 String
+  object                   ReportedObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  identifierType           IdentifierType
   identifierValueEncrypted String
-  normalizedValue String
-  createdAt DateTime @default(now())
+  normalizedValue          String
+  createdAt                DateTime       @default(now())
+
   @@unique([identifierType, normalizedValue])
   @@index([normalizedValue])
 }
 
 model ObjectPhoto {
-  id String @id @default(cuid())
-  objectId String
-  object ReportedObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
-  storageKey String @unique
-  mimeType String
-  sizeBytes Int
-  createdAt DateTime @default(now())
+  id         String         @id @default(cuid())
+  objectId   String
+  object     ReportedObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  storageKey String         @unique
+  mimeType   String
+  sizeBytes  Int
+  createdAt  DateTime       @default(now())
 }
 
 model Document {
-  id String @id @default(cuid())
-  reportId String
-  report TheftReport @relation(fields: [reportId], references: [id])
-  type DocumentType
-  storageKey String @unique
+  id                    String       @id @default(cuid())
+  reportId              String
+  report                TheftReport  @relation(fields: [reportId], references: [id])
+  type                  DocumentType
+  storageKey            String       @unique
   originalNameEncrypted String
-  mimeType String
-  sizeBytes Int
-  checksum String
-  scannedAt DateTime?
-  createdAt DateTime @default(now())
+  mimeType              String
+  sizeBytes             Int
+  checksum              String
+  scannedAt             DateTime?
+  createdAt             DateTime     @default(now())
 }
 
 model Recovery {
-  id String @id @default(cuid())
-  reportId String
-  report TheftReport @relation(fields: [reportId], references: [id])
-  recoveredAt DateTime
-  location String
-  circumstances String
+  id                 String      @id @default(cuid())
+  reportId           String
+  report             TheftReport @relation(fields: [reportId], references: [id])
+  recoveredAt        DateTime
+  location           String
+  circumstances      String
   possessorEncrypted String?
-  observations String?
-  serviceId String
-  service Service @relation(fields: [serviceId], references: [id])
-  officerId String
-  officer User @relation(fields: [officerId], references: [id])
-  createdAt DateTime @default(now())
+  observations       String?
+  serviceId          String
+  service            Service     @relation(fields: [serviceId], references: [id])
+  officerId          String
+  officer            User        @relation(fields: [officerId], references: [id])
+  createdAt          DateTime    @default(now())
 }
 
 model Return {
-  id String @id @default(cuid())
-  reportId String
-  report TheftReport @relation(fields: [reportId], references: [id])
-  returnedAt DateTime
-  location String
-  beneficiaryEncrypted String
+  id                         String      @id @default(cuid())
+  reportId                   String
+  report                     TheftReport @relation(fields: [reportId], references: [id])
+  returnedAt                 DateTime
+  location                   String
+  beneficiaryEncrypted       String
   identityReferenceEncrypted String
-  protocolReference String
-  observations String?
-  officerId String
-  officer User @relation(fields: [officerId], references: [id])
-  createdAt DateTime @default(now())
+  protocolReference          String
+  observations               String?
+  officerId                  String
+  officer                    User        @relation(fields: [officerId], references: [id])
+  createdAt                  DateTime    @default(now())
 }
 
 model SearchLog {
-  id String @id @default(cuid())
+  id        String          @id @default(cuid())
   queryHash String
   queryType IdentifierType?
-  reason String?
-  matched Boolean
-  reportId String?
-  report TheftReport? @relation(fields: [reportId], references: [id])
-  userId String
-  user User @relation(fields: [userId], references: [id])
+  reason    String?
+  matched   Boolean
+  reportId  String?
+  report    TheftReport?    @relation(fields: [reportId], references: [id])
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
   ipAddress String?
   sessionId String?
-  createdAt DateTime @default(now())
+  createdAt DateTime        @default(now())
+
   @@index([createdAt])
 }
 
 model AuditLog {
-  id String @id @default(cuid())
-  action String
+  id         String       @id @default(cuid())
+  action     String
   entityType String
-  entityId String?
-  reportId String?
-  report TheftReport? @relation(fields: [reportId], references: [id])
-  userId String
-  user User @relation(fields: [userId], references: [id])
-  oldValue Json?
-  newValue Json?
-  reason String?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  entityId   String?
+  reportId   String?
+  report     TheftReport? @relation(fields: [reportId], references: [id])
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+  oldValue   Json?
+  newValue   Json?
+  reason     String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime     @default(now())
+
   @@index([entityType, entityId])
   @@index([createdAt])
 }
 
 model Notification {
-  id String @id @default(cuid())
-  type String
-  title String
-  message String
-  readAt DateTime?
-  userId String
-  user User @relation(fields: [userId], references: [id])
-  reportId String?
-  report TheftReport? @relation(fields: [reportId], references: [id])
-  createdAt DateTime @default(now())
+  id        String       @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  readAt    DateTime?
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  reportId  String?
+  report    TheftReport? @relation(fields: [reportId], references: [id])
+  createdAt DateTime     @default(now())
 }
 
 model LoginSession {
-  id String @id @default(cuid())
-  tokenHash String @unique
-  userId String
-  user User @relation(fields: [userId], references: [id])
-  ipAddress String?
-  userAgent String?
-  lastActivityAt DateTime @default(now())
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime @default(now())
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  ipAddress      String?
+  userAgent      String?
+  lastActivityAt DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
 }

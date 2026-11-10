@@ -12,7 +12,10 @@
     "test:k6:security": "k6 run tests/k6/security.js",
     "test:k6:rate-limit": "k6 run tests/k6/login-rate-limit.js",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:create-admin": "tsx scripts/create-admin.ts",
+    "db:import-reports": "tsx scripts/import-reports.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",

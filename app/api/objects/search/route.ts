@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readSession } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { normalizeIdentifier } from "@/lib/normalization";
-import { listReports, type StoredReport } from "@/lib/report-store";
+import { findReportByIdentifier, type StoredReport } from "@/lib/report-store";
 import { rateLimit } from "@/lib/security";
 const publicMatch=(r:StoredReport)=>({
   dossier:r.dossier,
@@ -42,12 +42,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "INVALID_IDENTIFIER" }, { status: 400 });
   }
 
-  const report = (await listReports()).find(
-    (item) =>
-      normalizeIdentifier(item.identifiant) === query ||
-      normalizeIdentifier(item.dossier) === query ||
-      normalizeIdentifier(item.pv) === query,
-  );
+  let report: StoredReport | undefined;
+  try {
+    report = await findReportByIdentifier(query);
+  } catch (error) {
+    console.error("Failed to search reports", error);
+    return NextResponse.json({ error: "REPORT_SEARCH_FAILED" }, { status: 500 });
+  }
   if (report) {
     return NextResponse.json(
       { found: true, match: publicMatch(report), searchedAt: new Date().toISOString(), identifier: query },
